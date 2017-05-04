@@ -1,0 +1,321 @@
+### Install geospatial data extraction library
+library(rgdal)
+
+### import data
+#nad83_cords <-read.csv('C:/Documents/Crime_Data.csv')
+
+### identify coordinates in data
+coordinates(nad83_coords) <- c('XBLOCK', 'YBLOCK')
+## identify coordinate system in data (NAD8¬3, EPSG: 26985)
+proj4string(nad83_coords)=CRS("+init=EPSG:26985")
+## transform coordinate system to standard lat/long (WGS82, EPSG:426)
+coordinates_deg <- spTransform(nad83_coords,CRS("+init=epsg:4326"))
+## export results; be sure to flip long and lat in results
+write.csv(coordinates_deg,'C:/R/Export_Crime_Data.csv')
+
+
+
+coordinates_deg$XBLOCK
+x <- coordinates_deg 
+head(x)
+
+library(installr)
+
+
+install.packages("nycflights13")
+
+library(Lahman)
+library(revealjs)
+
+library(reshape2)
+library(dplyr)
+library(xtable)
+library(rmarkdown)
+library(revealjs)
+
+devtools::install_github("dgrtwo/gganimate")
+
+install.packages( 
+  lib  = lib <- .libPaths()[1],
+  pkgs = as.data.frame(installed.packages(lib), stringsAsFactors=FALSE)$Package,
+  type = 'source'
+)
+
+if(!require(installr)) {
+  install.packages("installr"); require(installr)} #load / install+load installr
+
+# using the package:
+updateR()
+
+
+# simple invocation
+render("dc_slid?re.Rmd", revealjs_presentation())
+
+# specify an option for incremental rendering
+render("pres.Rmd", revealjs_presentation(incremental = TRUE))
+
+## End(Not run)
+
+revealjs_presentation()
+
+
+install.packages("xtable")
+t <- d %>% group_by(year, OFFENSE) %>% summarize(Total = n()) %>% dcast(OFFENSE ~ year)
+
+xtabs(t)
+xtable(t)
+library(dplyr)    # for working with data frames
+library(ggplot2)
+library(ggmap)
+library(ggthemes) 
+library(lubridate)
+
+#install.packages("ggthemes")
+#install.packages("lubridate")
+
+setwd("C:/R/dc_crime/")
+  data <- read.csv("dc_crime_lon_lat.csv", stringsAsFactors =F)
+  
+  d <- data %>% select(REPORT_DAT,OFFENSE,METHOD,WARD,XBLOCK,YBLOCK)
+  
+  #mean(d$XBLOCK)
+  # -77.00819
+  # mean(d$YBLOCK)
+  # 38.90592  
+   
+d <- data
+d$date <- ymd_hms(d$REPORT_DAT)
+
+d <- d %>% mutate(year = year(date), month = month(date), 
+                  day = day(date), hour = hour(date),
+                  minute = minute(date),
+                  second = second(date))
+  
+#38.889762, -77.036216
+#38.8895° N, 77.0353° W
+d <- d %>% mutate(EW = ifelse(XBLOCK > -77.0362, "East", "West"), 
+                  NS = ifelse(YBLOCK > 38.8895, "North", "South"))
+
+
+#add Quadrant
+
+d <- d %>% mutate(quad = ifelse(EW == "West" & NS == "North", "Northwest", 
+                                ifelse(EW == "East" & NS == "North", "Northeast", 
+                                       ifelse(EW == "West" & NS == "South", "Southwest",
+                                              "Southeast"))))
+d$quad <- as.factor(d$quad)
+
+
+d <- mutate(d, crimetype = ifelse(OFFENSE =="HOMICIDE", "Violent",
+                           ifelse(OFFENSE =="SEX ABUSE", "Violent",
+                           ifelse(OFFENSE =="ROBBERY", "Violent",
+                           ifelse(OFFENSE =="ASSAULT W/DANGEROUS WEAPON", "Violent",           
+                            "Non-Violent" )))))
+d$crimetype <- as.factor(d$crimetype)
+
+save(d, file="crime_flat.rda")
+write.csv(d, "dc_crime_add_vars.csv")
+
+load("crime_flat.rda")
+ 
+
+#crimes per year
+d %>% subset(year < 2017) %>% group_by(year) %>% summarize(total = n()) %>%
+  ggplot(aes(x=year, y = total)) + geom_line(size=2) + scale_x_continuous()
+  
+#Stacked Plot
+d %>%  subset(year < 2017) %>%  group_by(year,OFFENSE) %>% summarize(total = n()) %>% 
+ ggplot(aes(x = year, y = total, fill = OFFENSE)) + geom_area(position = 'stack') + 
+  scale_x_continuous()
+
+#HOMICIDE plot
+d %>% filter(year < 2017, OFFENSE =="HOMICIDE") %>% group_by(year) %>% summarize(total = n()) %>%
+  ggplot(aes(x=year, y = total)) + geom_line() + scale_x_continuous()
+
+d %>% filter(year < 2017, OFFENSE =="SEX ABUSE") %>% group_by(year) %>% summarize(total = n()) %>%
+  ggplot(aes(x=year, y = total)) + geom_line() + scale_x_continuous()
+
+d %>% filter(year < 2017, OFFENSE =="THEFT/OTHER") %>% group_by(year) %>% summarize(total = n()) %>%
+  ggplot(aes(x=year, y = total)) + geom_line() + scale_x_continuous()
+
+
+
+
+#Split by Horizontal lines -> 
+
+quadrant <- d %>% filter(year < 2017) %>% group_by(year,OFFENSE,quad) %>% summarize(total = n())
+  
+save(quad, file="quad.rda") 
+
+load("quad.rda")
+ggplot(quad,aes(x=year, y = total, colour = quad)) + geom_line(size=1.1) + facet_wrap(~OFFENSE, scales="free_y")
+
+quad <- as.data.frame(quadrant)
+
+
+
+
+#Facet Grid by Crime
+d %>% filter(year < 2017) %>% group_by(year, OFFENSE) %>% summarize(total = n()) %>%
+  ggplot(aes(x=year, y = total)) + geom_line(size=1.1) + facet_wrap(~OFFENSE, scales="free_y")
+
+
+#Facet Grid with Quadrant
+d  %>% group_by(hour, OFFENSE, quad) %>% summarize(total = n()) %>%
+  ggplot(aes(x=hour, y = total, colour = quad)) + geom_line() + facet_wrap(~OFFENSE,  scales="free_y")
+
+
+
+
+#Time of Day Plots
+
+
+#Map Plots  
+map <- get_map(location = "washington, dc", zoom = 12)
+hom <- filter(d, OFFENSE=="HOMICIDE")
+
+ggmap(map) + geom_point(data = k, aes(x = long, y = lat))
+
+
+
+year <- hom %>% group_by(year) %>% summarize(total = n())
+y <- year$year
+
+map2 <- get_map(location = "anacostia metro, washington, dc", zoom = 13)
+
+
+
+for(i in y) {
+  print(i)
+}
+
+
+ggplot(hom, aes(x=XBLOCK, y = YBLOCK, colour = METHOD)) + geom_point()
+
+for(i in y) {
+  ggplot(hom[year == i,], aes(x=XBLOCK, y = YBLOCK, colour = METHOD)) + geom_point()
+}
+
+hom[year==2008,]
+
+#ward totals..
+d$WARD <- as.factor(d$WARD)
+d$OFFENSE <- as.factor(d$OFFENSE)
+
+
+ward <- d %>% 
+  group_by(WARD, OFFENSE) %>%
+  summarize(total = n()) %>% dcast(WARD ~ OFFENSE)
+
+            library(animation)
+library("ggplot2")
+library("scales")
+library('ggthemes')
+library("plyr")
+library("dplyr")
+library("data.table")
+library("animation")
+library("tweenr")
+library(devtools)
+library("gganimate")
+library(shinydashboard)
+
+
+
+
+## make sure ImageMagick has been installed in your system
+saveGIF({
+  for (i in 1:10) plot(runif(10), ylim = 0:1)
+})
+
+
+
+year <- hom %>% group_by(year) %>% summarize(total = n())
+y <- year$year
+
+
+
+
+ggplot(hom, aes(x=XBLOCK, y = YBLOCK, colour = METHOD)) + geom_point()
+
+for(i in y){
+  print(i)
+}
+
+
+saveHTML({
+for(i in 1:10) {
+  ggplot(hom[year == y[i],], aes(x=XBLOCK, y = YBLOCK, colour = METHOD)) + geom_point()
+}
+})
+
+for (i in 1:10){
+x <- ggplot(hom[year == y[i],], aes(x=XBLOCK, y = YBLOCK, colour = METHOD)) + geom_point()
+plot(x)
+}
+
+savePlot(filename="test", device = dev.cur(),
+         restoreConsole = TRUE)
+#cannot save out from windows device
+
+
+
+
+  
+saveHTML({for (i in 1:10) ggplot(hom[year == y[i],], aes(x=XBLOCK, y = YBLOCK, colour = METHOD)) + geom_point()},htmlfile = "test1.html")
+saveHTML({for (i in 1:5) qplot(runif(10))},htmlfile = "test2.html")
+
+
+system("C:/Program Files/ImageMagick-6.9.8-Q16/convert -delay 80 *.jpg example_1.gif")
+  
+
+ani.options(convert = shQuote('C:/Program Files/ImageMagick-6.9.8-Q16/convert.exe'))
+ani.options("convert") [1] "\"C:/Program Files/ImageMagick-6.9.8-Q16/convert.exe\""
+
+ani.options(convert = 'C:/Program Files/ImageMagick-6.9.8-Q16/convert.exe')
+ani.options("convert") [1] "C:/Program Files/ImageMagick-6.9.8-Q16/convert.exe"
+
+
+
+
+time <- d  %>% group_by(hour, OFFENSE) %>% summarize(total = n())
+
+ggplot(time, aes(x=hour, y = total,  fill = OFFENSE)) + geom_bar(stat="identity")
+
+
+theft <- d %>% filter(OFFENSE == "THEFT F/AUTO" | OFFENSE == "THEFT/OTHER") %>%
+  group_by(hour, OFFENSE) %>% summarize(total = n())
+
+
+theft_day <- filter(theft ,hour > 8)
+ggplot(theft_day, aes(x=hour, y = total, fill = OFFENSE)) + geom_bar(stat="identity")
+
+ggplot(theft_day, aes(x=hour, y = total, colour = OFFENSE)) + geom_line()
+
+
+ 
+library(leaflet)
+hom <- d %>% subset(OFFENSE == "HOMICIDE")
+m <- leaflet(data = hom) %>% addTiles() %>%
+  addMarkers(~XBLOCK, ~YBLOCK, popup = ~as.character(hom$REPORT_DAT))
+
+m  
+library(htmlwidgets)
+saveWidget(m, file="homoicide_plot.html")
+
+###hard to loadd
+###Save and attache
+
+
+
+
+leaflet(geo_s) %>% addTiles() %>% addMarkers(popup = ~paste("Average Houshold income: " ,
+                                                            as.character(geo_s$avg_house_inc), "<br>", "Ave House Size: ", as.character(geo_s$avg_house_size)),
+                                             clusterOptions = markerClusterOptions() )  %>% 
+  addMarkers(data=comm_geo, popup = ~as.character(comm_geo$dod_commissary_gis.us_military_installation)) %>%
+  
+  addCircles(data =d3, lng = ~lon, lat = ~lat, weight = 1,
+             radius = d3$pop * 3, popup = ~paste("Est Mil Child Pop: ",as.character(d3$pop)))
+
+
+
